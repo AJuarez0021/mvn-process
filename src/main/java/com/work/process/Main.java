@@ -1,6 +1,8 @@
 package com.work.process;
 
-import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import com.work.process.gui.ProcessFrame;
+
 import javax.swing.SwingUtilities;
 
 /**
@@ -12,8 +14,7 @@ public class Main {
     
     
     public static void main(String[] args) {
-        // Tema oscuro
-        FlatDarkLaf.setup();
-        SwingUtilities.invokeLater(Process::new);
+        FlatMacDarkLaf.setup();
+        SwingUtilities.invokeLater(ProcessFrame::new);
     }
 }

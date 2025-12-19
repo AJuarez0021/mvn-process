@@ -1,52 +1,47 @@
-package com.work.process;
+package com.work.process.gui;
 
-import java.awt.BorderLayout;
+import oshi.SystemInfo;
+import oshi.software.os.OSProcess;
+import oshi.software.os.OperatingSystem;
+
+import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.Optional;
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollBar;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JToolBar;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
-import oshi.SystemInfo;
-import oshi.software.os.OSProcess;
-import oshi.software.os.OperatingSystem;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author ajuar
  */
-public class Process extends JFrame {
+public class ProcessFrame extends JFrame {
+    private static final Logger log
+            = Logger.getLogger(ProcessFrame.class.getName());
 
-    private final OperatingSystem os;
+    private final transient OperatingSystem os;
     private final ProcessTableModel model;
 
     private final JTable table;
 
     private Timer updateTimer;
 
-    public Process() {
+    public ProcessFrame() {
 
         os = new SystemInfo().getOperatingSystem();
         model = new ProcessTableModel(fetchProcesses());
 
         JToolBar toolBar = new JToolBar();
-        JButton refreshButton = new JButton("Refrescar");
-        JButton killButton = new JButton("Terminar Proceso");
-        JButton exportButton = new JButton("Exportar");
+        JButton refreshButton = new JButton("Refresh");
+        JButton killButton = new JButton("End Process");
+        JButton exportButton = new JButton("Export");
 
         toolBar.add(refreshButton);
         toolBar.add(killButton);
         toolBar.add(exportButton);
 
-        // Acciones
         refreshButton.addActionListener(e -> loadProcesses());
         killButton.addActionListener(e -> killSelectedProcess());
         exportButton.addActionListener(e -> exportProcesses());
@@ -58,7 +53,7 @@ public class Process extends JFrame {
         startAutoUpdate();
 
         setTitle("Process");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         add(toolBar, BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
@@ -78,7 +73,7 @@ public class Process extends JFrame {
 
     private void exportProcesses() {
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Guardar como");
+        chooser.setDialogTitle("Save as");
 
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
@@ -86,17 +81,17 @@ public class Process extends JFrame {
             try (PrintWriter writer = new PrintWriter(file)) {
                 for (int i = 0; i < model.getRowCount(); i++) {
 
-                    for (int j = 0; j < ProcessTableModel.COLS.length; j++) {
+                    for (int j = 0; j < model.getColumnCount(); j++) {
                         writer.printf("%s: %s%n",
-                                ProcessTableModel.COLS[j],
+                                model.getColumName(j),
                                 model.getValueAt(i, j));
                     }
 
                     writer.println();
                 }
-                showMessage("Exportación completada.");
+                showMessage("Export completed.");
             } catch (Exception ex) {
-                showError("Error al exportar: " + ex.getMessage());
+                showError("Export error: " + ex.getMessage());
             }
         }
     }
@@ -108,23 +103,23 @@ public class Process extends JFrame {
     private void killSelectedProcess() {
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
-            showError("Selecciona un proceso para terminar.");
+            showError("Select a process to finish.");
             return;
         }
         int pid = Integer.parseInt(model.getValueAt(selectedRow, 1).toString(), 16);
         OSProcess process = os.getProcess(pid);
 
         if (process == null) {
-            showError("No se encontro el proceso.");
+            showError("The process was not found.");
             return;
         }
 
         boolean result = killProcess(process);
         if (result) {
-            showMessage("Proceso " + process.getName() + " terminado.");
+            showMessage("Process " + process.getName() + " completed.");
             loadProcesses();
         } else {
-            showError("No se pudo terminar el proceso.");
+            showError("The process could not be completed.");
         }
     }
 
@@ -146,16 +141,16 @@ public class Process extends JFrame {
         Optional<ProcessHandle> optProcess = ProcessHandle.of(process.getProcessID());
         if (optProcess.isPresent()) {
             ProcessHandle ph = optProcess.get();
-            System.out.println("Intentando terminar proceso: " + process.getName());
+            log.log(Level.INFO, "Trying to end process: {0}", process.getName());
 
             if (ph.supportsNormalTermination()) {
-                result = ph.destroy(); // Terminación amigable
+                result = ph.destroy();
             } else {
-                result = ph.destroyForcibly(); // Fuerza terminación
+                result = ph.destroyForcibly();
             }
 
             ph.onExit().thenRun(()
-                    -> System.out.println("Proceso " + process.getName() + " terminado")
+                    -> log.log(Level.INFO, "Proceso {0} terminado", process.getName())
             );
         }
 
@@ -167,7 +162,7 @@ public class Process extends JFrame {
             return;
         }
 
-        updateTimer = new Timer(5000, e -> updateCpuAndMemory()); // cada 5 segundos
+        updateTimer = new Timer(5000, e -> updateCpuAndMemory());
         updateTimer.start();
     }
 
@@ -185,8 +180,8 @@ public class Process extends JFrame {
             model.setData(fetchProcesses());
             verticalScrollBar.setValue(scrollPosition);
             if (selectedRow >= 0 && selectedRow < table.getRowCount()) {
-                table.setRowSelectionInterval(selectedRow, selectedRow); // Restaurar selección
-                table.scrollRectToVisible(table.getCellRect(selectedRow, 0, true)); // Asegurar visibilidad
+                table.setRowSelectionInterval(selectedRow, selectedRow);
+                table.scrollRectToVisible(table.getCellRect(selectedRow, 0, true));
             }
         });
     }

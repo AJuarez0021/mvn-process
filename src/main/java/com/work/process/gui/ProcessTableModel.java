@@ -1,7 +1,6 @@
-package com.work.process;
+package com.work.process.gui;
 
 import java.util.List;
-import javax.swing.Timer;
 import javax.swing.table.AbstractTableModel;
 import oshi.software.os.OSProcess;
 
@@ -11,11 +10,11 @@ import oshi.software.os.OSProcess;
  */
 public class ProcessTableModel extends AbstractTableModel {
 
-    public static final String[] COLS = {
-        "Proceso", "PID", "Memoria", "Cpu", "Usuario", "Prioridad Base", "Número de Hilos", "Ruta completa"
+    private static final String[] COLS = {
+        "Process", "PID", "Memory", "Cpu", "User", "Base Priority", "Number of Threads", "Path"
     };
 
-    private List<OSProcess> data;
+    private transient List<OSProcess> data;
 
     public ProcessTableModel(List<OSProcess> data) {
         this.data = data;
@@ -24,6 +23,10 @@ public class ProcessTableModel extends AbstractTableModel {
     public void setData(List<OSProcess> data) {
         this.data = data;
         fireTableDataChanged();
+    }
+
+    public String getColumName(int index) {
+        return COLS[index];
     }
 
     @Override
