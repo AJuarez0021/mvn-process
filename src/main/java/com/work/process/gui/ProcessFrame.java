@@ -1,5 +1,7 @@
 package com.work.process.gui;
 
+import com.work.process.util.IconUtil;
+import com.work.process.util.MessageUtil;
 import oshi.SystemInfo;
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
@@ -28,23 +30,30 @@ public class ProcessFrame extends JFrame {
 
     private Timer updateTimer;
 
+    private static final String TITLE = "process";
+
+    private static final String TITLE_ERROR = "Error";
+
     public ProcessFrame() {
 
         os = new SystemInfo().getOperatingSystem();
         model = new ProcessTableModel(fetchProcesses());
 
         JToolBar toolBar = new JToolBar();
-        JButton refreshButton = new JButton("Refresh");
-        JButton killButton = new JButton("End Process");
-        JButton exportButton = new JButton("Export");
+        JButton refreshButton = new JButton("Refresh", IconUtil.loadIcon("/icons/refresh.png", 32, 32));
+        JButton killButton = new JButton("End Process", IconUtil.loadIcon("/icons/end.png", 32, 32));
+        JButton exportButton = new JButton("Export", IconUtil.loadIcon("/icons/export.png", 32, 32));
+        JButton aboutButton = new JButton("About", IconUtil.loadIcon("/icons/about.png", 32, 32));
 
         toolBar.add(refreshButton);
         toolBar.add(killButton);
         toolBar.add(exportButton);
+        toolBar.add(aboutButton);
 
         refreshButton.addActionListener(e -> loadProcesses());
         killButton.addActionListener(e -> killSelectedProcess());
         exportButton.addActionListener(e -> exportProcesses());
+        aboutButton.addActionListener(e -> about());
 
         table = new JTable(model);
         table.setAutoCreateRowSorter(true);
@@ -52,12 +61,16 @@ public class ProcessFrame extends JFrame {
 
         startAutoUpdate();
 
-        setTitle("Process");
+        setTitle(TITLE);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         add(toolBar, BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
         setSize(800, 600);
+        ImageIcon icon = IconUtil.loadIcon("/icons/main.png", 36, 36);
+        if (icon != null) {
+            setIconImage(icon.getImage());
+        }
 
         setLocationRelativeTo(null);
         setVisible(true);
@@ -89,9 +102,9 @@ public class ProcessFrame extends JFrame {
 
                     writer.println();
                 }
-                showMessage("Export completed.");
+                MessageUtil.showInfo("Export completed.", TITLE);
             } catch (Exception ex) {
-                showError("Export error: " + ex.getMessage());
+                MessageUtil.showError("Export error: " + ex.getMessage(), TITLE_ERROR);
             }
         }
     }
@@ -103,32 +116,24 @@ public class ProcessFrame extends JFrame {
     private void killSelectedProcess() {
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
-            showError("Select a process to finish.");
+            MessageUtil.showError("Select a process to finish.", TITLE_ERROR);
             return;
         }
         int pid = Integer.parseInt(model.getValueAt(selectedRow, 1).toString(), 16);
         OSProcess process = os.getProcess(pid);
 
         if (process == null) {
-            showError("The process was not found.");
+            MessageUtil.showError("The process was not found.", TITLE_ERROR);
             return;
         }
 
         boolean result = killProcess(process);
         if (result) {
-            showMessage("Process " + process.getName() + " completed.");
+            MessageUtil.showInfo("Process " + process.getName() + " completed.", TITLE);
             loadProcesses();
         } else {
-            showError("The process could not be completed.");
+            MessageUtil.showError("The process could not be completed.", TITLE_ERROR);
         }
-    }
-
-    private void showMessage(String msg) {
-        JOptionPane.showMessageDialog(this, msg);
-    }
-
-    private void showError(String msg) {
-        JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
     private List<OSProcess> fetchProcesses() {
@@ -174,15 +179,20 @@ public class ProcessFrame extends JFrame {
 
     private void updateCpuAndMemory() {
         SwingUtilities.invokeLater(() -> {
-            JScrollBar verticalScrollBar = ((JScrollPane) table.getParent().getParent()).getVerticalScrollBar();
-            int scrollPosition = verticalScrollBar.getValue();
             int selectedRow = table.getSelectedRow();
             model.setData(fetchProcesses());
-            verticalScrollBar.setValue(scrollPosition);
             if (selectedRow >= 0 && selectedRow < table.getRowCount()) {
                 table.setRowSelectionInterval(selectedRow, selectedRow);
                 table.scrollRectToVisible(table.getCellRect(selectedRow, 0, true));
             }
         });
+    }
+
+    /**
+     * About.
+     */
+    private void about() {
+        AboutDialog aboutDialog = new AboutDialog(this);
+        aboutDialog.setVisible(true);
     }
 }
